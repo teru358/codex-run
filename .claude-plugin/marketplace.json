@@ -1,0 +1,15 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "codex-run",
+  "description": "codex-run: run OpenAI Codex jobs from Claude Code with a rate-limit preflight",
+  "owner": { "name": "teru358" },
+  "plugins": [
+    {
+      "name": "codex-run",
+      "description": "Delegate reviews, revisions and implementation to OpenAI Codex in one command (launch, wait, collect) with a rate-limit preflight.",
+      "version": "0.1.0",
+      "source": "./",
+      "author": { "name": "teru358" }
+    }
+  ]
+}

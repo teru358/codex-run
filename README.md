@@ -21,7 +21,14 @@ report saved: out/review.md (40 lines)
 Requirements: Claude Code with the `openai-codex` plugin installed and `codex login` done;
 `node`, `python3`, `bash`.
 
-Copy the skill into your personal or project skills directory:
+As a plugin (recommended — skill and agent install together and update with `claude plugin update`):
+
+```bash
+claude plugin marketplace add teru358/codex-run
+claude plugin install codex-run@codex-run
+```
+
+Or copy the skill into your personal or project skills directory:
 
 ```bash
 git clone https://github.com/teru358/codex-run
