@@ -26,9 +26,12 @@ $S/codex_run.sh -b brief.md -m terra -w -c tmp/wt/x # write-capable implementati
 
 `codex_run.sh` prints the rate limit, the job id, then `status | subagent spawns in log: N`,
 then the report (or saves it with `-o`). Exit codes: 0 done, 2 quota exhausted / preflight
-refused, 3 timeout, 1 other. Run it in the foreground; a 190-second `status --wait` loop is
-inside, so a 10-minute Bash timeout covers a typical review and the script keeps going for
-longer jobs up to `-t` seconds.
+refused, 3 timeout, 1 other. A 190-second `status --wait` loop is inside, so the script keeps going up to `-t` seconds.
+If your tool has its own hard timeout (Claude Code's Bash stops at 10 minutes), either run
+the script in the background and read `-o` when the task notification arrives, or accept
+that the wrapper may be killed while the Codex job keeps running: the job id was printed on
+the `job:` line, and `codex-companion.mjs status <id> --cwd <dir> --wait --json` recovers it
+(the log's last `Final output` block is the report).
 
 ## Writing the brief
 
