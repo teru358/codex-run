@@ -33,6 +33,17 @@ that the wrapper may be killed while the Codex job keeps running: the job id was
 the `job:` line, and `codex-companion.mjs status <id> --cwd <dir> --wait --json` recovers it
 (the log's last `Final output` block is the report).
 
+`codex_review.sh` wraps the plugin's built-in diff reviewer (no brief needed: `-B main` for a
+branch, `-a "focus text"` for an adversarial pass). It is the quick option for "look at this
+diff"; use `codex_run.sh` with a review brief when the reviewer must read a spec, earlier
+verdicts, or answer specific doubts.
+
+To keep the launch and polling out of the main conversation, an agent definition is
+provided in `agents/codex-run.md`: spawn it with the exact script command line and it
+returns only the report, appearing as a separate task line like the plugin's `codex:rescue`.
+That costs one small (haiku) subagent turn; a plain foreground or background Bash call of
+the script costs nothing extra.
+
 ## Writing the brief
 
 Codex reads a prompt file (`--prompt-file`), so put the whole brief in a Markdown file. Start

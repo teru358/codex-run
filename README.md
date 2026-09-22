@@ -26,6 +26,7 @@ Copy the skill into your personal or project skills directory:
 ```bash
 git clone https://github.com/<you>/codex-run-skill
 cp -r codex-run-skill/skills/codex-run ~/.claude/skills/        # personal
+cp codex-run-skill/agents/codex-run.md ~/.claude/agents/       # optional subagent wrapper
 # or: cp -r codex-run-skill/skills/codex-run <repo>/.claude/skills/   # per project
 ```
 
@@ -39,6 +40,8 @@ Codex. The scripts also work on their own from any shell.
 | `skills/codex-run/SKILL.md` | when and how Claude should use it: brief rules, model choice, reading results |
 | `scripts/codex_run.sh` | launch → wait → collect, with usage preflight; exit 2 on quota exhaustion |
 | `scripts/codex_usage.sh` | 5h / 7d rate limits via `codex app-server` JSON-RPC |
+| `scripts/codex_review.sh` | the plugin's built-in diff reviewer (`review` / `adversarial-review`), same launch → wait → collect |
+| `agents/codex-run.md` | optional haiku subagent that runs the scripts and returns only the report (separate task line in the UI) |
 | `references/brief-templates.md` | review / revise / implement brief skeletons with the constraint block |
 | `references/companion-notes.md` | runtime quirks: state keyed by cwd, log format, sandbox limits |
 
