@@ -24,10 +24,10 @@ Requirements: Claude Code with the `openai-codex` plugin installed and `codex lo
 Copy the skill into your personal or project skills directory:
 
 ```bash
-git clone https://github.com/<you>/codex-run-skill
-cp -r codex-run-skill/skills/codex-run ~/.claude/skills/        # personal
-cp codex-run-skill/agents/codex-run.md ~/.claude/agents/       # optional subagent wrapper
-# or: cp -r codex-run-skill/skills/codex-run <repo>/.claude/skills/   # per project
+git clone https://github.com/teru358/codex-run
+cp -r codex-run/skills/codex-run ~/.claude/skills/        # personal
+cp codex-run/agents/codex-run.md ~/.claude/agents/       # optional subagent wrapper
+# or: cp -r codex-run/skills/codex-run <repo>/.claude/skills/   # per project
 ```
 
 Claude then sees `codex-run` in its skill list and reads `SKILL.md` when the task calls for
