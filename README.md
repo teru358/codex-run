@@ -7,13 +7,13 @@ Claude quota is spent on decisions rather than on polling.
 
 ```
 $ skills/codex-run/scripts/codex_usage.sh
-5h: 42% used (reset 09/22 15:53 JST) | 7d: 61% used (reset 09/26 19:29 JST) | plan: plus
+5h: 0% used (reset 09/22 18:48 JST) | 7d: 61% used (reset 09/26 19:29 JST) | plan: plus
 
-$ skills/codex-run/scripts/codex_run.sh -b review-brief.md -m sol -o out/review.md
-usage: 5h: 42% used ...
-job: task-xxxx (model gpt-5.6-sol, read-only, cwd /home/me/repo)
+$ skills/codex-run/scripts/codex_run.sh -b review-brief.md -m sol -c tmp/wt/a21a -o out/review.md
+usage: 5h: 0% used (reset 09/22 18:48 JST) | 7d: 61% used (reset 09/26 19:29 JST) | plan: plus
+job: task-muc725cy-ihk62r (model gpt-5.6-sol, read-only, cwd tmp/wt/a21a)
 status: completed | subagent spawns in log: 0
-report saved: out/review.md (54 lines)
+report saved: out/review.md (40 lines)
 ```
 
 ## Install
