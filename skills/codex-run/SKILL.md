@@ -43,7 +43,8 @@ verdicts, or answer specific doubts.
 question (`-q` or `-f`), optionally a few context files (`-C`, appended verbatim), and it
 runs a read-only job that answers with Recommendation / Why / What I would check first /
 Risks. Use it before committing to a verdict, a design fork, or a debugging hypothesis — it
-costs Codex quota, not Claude's. Prefer naming repository paths in the question over pasting
+costs Codex quota, not Claude's, and defaults to `sol` (the strongest model) because a wrong
+answer here is more expensive than the quota; pass `-m terra` when the 7-day window is tight. Prefer naming repository paths in the question over pasting
 large files: Codex reads the directory given with `-c` itself.
 
 To keep the launch and polling out of the main conversation, three agent definitions are

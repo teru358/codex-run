@@ -49,7 +49,7 @@ Codex. The scripts also work on their own from any shell.
 | `scripts/codex_run.sh` | launch → wait → collect, with usage preflight; exit 2 on quota exhaustion |
 | `scripts/codex_usage.sh` | 5h / 7d rate limits via `codex app-server` JSON-RPC |
 | `scripts/codex_review.sh` | the plugin's built-in diff reviewer (`review` / `adversarial-review`), same launch → wait → collect |
-| `scripts/codex_advise.sh` | ask Codex a question read-only ("advisor" for the orchestrating model): question + context files → Recommendation / Why / What to check / Risks |
+| `scripts/codex_advise.sh` | ask Codex a question read-only ("advisor" for the orchestrating model): question + context files → Recommendation / Why / What to check / Risks; defaults to the strongest model (`sol`) |
 | `agents/codex-code.md` | haiku subagent wrapper for write-capable jobs (implementation, revision) — its own task line in the UI |
 | `agents/codex-review.md` | same, for read-only review jobs |
 | `agents/codex-advise.md` | same, for `codex_advise.sh` questions |

@@ -10,7 +10,7 @@
 #   -C  context file to append verbatim (repeatable): a diff, a spec excerpt, a plan, earlier
 #       verdicts. Keep the total small — the whole thing is one prompt. Codex can also read
 #       the repository under -c itself, so prefer naming paths in the question over pasting.
-#   -m  model alias (default: terra; sol for design-level questions).
+#   -m  model alias (default: sol — advice is where the strongest model pays off; terra to save quota).
 #   -c  working directory the sandbox may read (default: current dir).
 #   -o  save the answer to this file as well as printing it.
 #   -e  reasoning effort (default: medium).  -t  overall timeout seconds (default: 1200).
@@ -18,7 +18,7 @@
 # confirmation, and to answer with a recommendation + reasons + what it would check first.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-q=""; qfile=""; ctx=(); model="terra"; cwd="$PWD"; out=""; effort="medium"; timeout_s=1200; extra=()
+q=""; qfile=""; ctx=(); model="sol"; cwd="$PWD"; out=""; effort="medium"; timeout_s=1200; extra=()
 while [ $# -gt 0 ]; do
   case "$1" in
     -q) q=$2; shift 2;; -f) qfile=$2; shift 2;; -C) ctx+=("$2"); shift 2;;
