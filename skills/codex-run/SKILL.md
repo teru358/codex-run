@@ -42,7 +42,9 @@ verdicts, or answer specific doubts.
 `codex_advise.sh` is the "advisor" entry point for the orchestrating model: give it a
 question (`-q` or `-f`), optionally a few context files (`-C`, appended verbatim), and it
 runs a read-only job that answers with Recommendation / Why / What I would check first /
-Risks. Use it before committing to a verdict, a design fork, or a debugging hypothesis — it
+Risks. Use it before committing to a verdict, a design fork, or a debugging hypothesis. It is
+decision input for the orchestrator, not a review round: adopting what it finds is fine, but it
+never counts as a review stage (that is what `codex-review` / a review brief is for). It
 costs Codex quota, not Claude's, and defaults to `sol` (the strongest model) because a wrong
 answer here is more expensive than the quota; pass `-m terra` when the 7-day window is tight. Prefer naming repository paths in the question over pasting
 large files: Codex reads the directory given with `-c` itself.

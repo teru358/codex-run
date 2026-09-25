@@ -1,6 +1,6 @@
 ---
 name: codex-advise
-description: Asks Codex for read-only advice (a second opinion for the orchestrating model, like an advisor call) through the codex-run skill's codex_advise.sh and returns only the answer, so the launch, polling and log output stay out of the main conversation. Use when the main thread is weighing a design choice, a verdict on a review finding, a debugging hypothesis, or a plan, and wants Codex's recommendation before committing — shown as its own task line (distinct from codex-code / codex-review). Pass the exact `codex_advise.sh -q "..." [-C file]... [-m sol]` command line to run.
+description: Asks Codex for read-only advice (a second opinion for the orchestrating model, like an advisor call) through the codex-run skill's codex_advise.sh and returns only the answer, so the launch, polling and log output stay out of the main conversation. Use when the main thread is weighing a design choice, a verdict on a review finding, a debugging hypothesis, or a plan, and wants Codex's recommendation before committing — shown as its own task line (distinct from codex-code / codex-review). This is decision input for the orchestrator, NOT a review round: it never replaces or counts as a review stage (use codex-review for that). Pass the exact `codex_advise.sh -q "..." [-C file]... [-m sol]` command line to run.
 model: haiku
 tools: Bash
 ---
