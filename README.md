@@ -10,6 +10,7 @@ $ skills/codex-run/scripts/codex_usage.sh
 5h: 0% used (reset 09/22 18:48 JST) | 7d: 61% used (reset 09/26 19:29 JST) | plan: plus
 
 $ skills/codex-run/scripts/codex_run.sh -b review-brief.md -m sol -c tmp/wt/a21a -o out/review.md
+$ skills/codex-run/scripts/codex_advise.sh -q "Is a per-key last-attempt flag enough to gate resume?" -C out/review.md
 usage: 5h: 0% used (reset 09/22 18:48 JST) | 7d: 61% used (reset 09/26 19:29 JST) | plan: plus
 job: task-muc725cy-ihk62r (model gpt-5.6-sol, read-only, cwd tmp/wt/a21a)
 status: completed | subagent spawns in log: 0
@@ -33,7 +34,7 @@ Or copy the skill into your personal or project skills directory:
 ```bash
 git clone https://github.com/teru358/codex-run
 cp -r codex-run/skills/codex-run ~/.claude/skills/        # personal
-cp codex-run/agents/codex-run.md ~/.claude/agents/       # optional subagent wrapper
+cp codex-run/agents/*.md ~/.claude/agents/               # optional subagent wrappers
 # or: cp -r codex-run/skills/codex-run <repo>/.claude/skills/   # per project
 ```
 
@@ -48,7 +49,10 @@ Codex. The scripts also work on their own from any shell.
 | `scripts/codex_run.sh` | launch → wait → collect, with usage preflight; exit 2 on quota exhaustion |
 | `scripts/codex_usage.sh` | 5h / 7d rate limits via `codex app-server` JSON-RPC |
 | `scripts/codex_review.sh` | the plugin's built-in diff reviewer (`review` / `adversarial-review`), same launch → wait → collect |
-| `agents/codex-run.md` | optional haiku subagent that runs the scripts and returns only the report (separate task line in the UI) |
+| `scripts/codex_advise.sh` | ask Codex a question read-only ("advisor" for the orchestrating model): question + context files → Recommendation / Why / What to check / Risks |
+| `agents/codex-code.md` | haiku subagent wrapper for write-capable jobs (implementation, revision) — its own task line in the UI |
+| `agents/codex-review.md` | same, for read-only review jobs |
+| `agents/codex-advise.md` | same, for `codex_advise.sh` questions |
 | `references/brief-templates.md` | review / revise / implement brief skeletons with the constraint block |
 | `references/companion-notes.md` | runtime quirks: state keyed by cwd, log format, sandbox limits |
 

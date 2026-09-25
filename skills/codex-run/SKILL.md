@@ -22,6 +22,7 @@ S=<path-to-this-skill>/scripts
 $S/codex_usage.sh                                   # 5h / 7d windows + reset times
 $S/codex_run.sh -b brief.md -m sol -o out/review.md # read-only review, wait, save report
 $S/codex_run.sh -b brief.md -m terra -w -c tmp/wt/x # write-capable implementation in a worktree
+$S/codex_advise.sh -q "Should resume require a succeeded probe in the same tick?" -C tmp/r1/codex-out.md -m sol
 ```
 
 `codex_run.sh` prints the rate limit, the job id, then `status | subagent spawns in log: N`,
@@ -38,10 +39,25 @@ branch, `-a "focus text"` for an adversarial pass). It is the quick option for "
 diff"; use `codex_run.sh` with a review brief when the reviewer must read a spec, earlier
 verdicts, or answer specific doubts.
 
-To keep the launch and polling out of the main conversation, an agent definition is
-provided in `agents/codex-run.md`: spawn it with the exact script command line and it
-returns only the report, appearing as a separate task line like the plugin's `codex:rescue`.
-That costs one small (haiku) subagent turn; a plain foreground or background Bash call of
+`codex_advise.sh` is the "advisor" entry point for the orchestrating model: give it a
+question (`-q` or `-f`), optionally a few context files (`-C`, appended verbatim), and it
+runs a read-only job that answers with Recommendation / Why / What I would check first /
+Risks. Use it before committing to a verdict, a design fork, or a debugging hypothesis — it
+costs Codex quota, not Claude's. Prefer naming repository paths in the question over pasting
+large files: Codex reads the directory given with `-c` itself.
+
+To keep the launch and polling out of the main conversation, three agent definitions are
+provided under `agents/`; spawn one with the exact script command line and it returns only
+the report, appearing as its own task line like the plugin's `codex:rescue`. They are split
+by job kind so the task list shows what Codex is doing:
+
+| agent | runs | task line means |
+|---|---|---|
+| `codex-code` | `codex_run.sh -w ...` | Codex is writing code / revising a document |
+| `codex-review` | `codex_run.sh` (no `-w`) or `codex_review.sh` | Codex is reviewing, read-only |
+| `codex-advise` | `codex_advise.sh ...` | Codex is answering a question for the orchestrator |
+
+Each costs one small (haiku) subagent turn; a plain foreground or background Bash call of
 the script costs nothing extra.
 
 ## Writing the brief
