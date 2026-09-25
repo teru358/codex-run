@@ -17,6 +17,28 @@ status: completed | subagent spawns in log: 0
 report saved: out/review.md (40 lines)
 ```
 
+## Requirements
+
+- **The [openai-codex Claude Code plugin] must be installed** (`/plugin` → openai-codex, or
+  `claude plugin install codex@openai-codex`), together with the Codex CLI it depends on
+  (`npm install -g @openai/codex`, signed in). codex-run contains no Codex client of its own.
+- `node` on `PATH` (the companion runtime is a Node script), `bash`, `python3` (used by
+  `codex_usage.sh` to parse JSON).
+
+## How it works
+
+Every script here is a **thin wrapper around the plugin's internal runtime script**
+`scripts/codex-companion.mjs` (auto-detected under `~/.claude/plugins/cache/openai-codex/`,
+or set `CODEX_COMPANION`). That script spawns `codex app-server` and drives one turn over
+JSON-RPC: `thread/start` with the sandbox (`read-only` or `workspace-write`) and
+`approvalPolicy: never`, then `turn/start` with the prompt, model and effort; it persists
+the job state and log under the working directory and exposes `status` / `result` /
+`cancel`. The execution itself — model, sandbox, quota — is therefore identical to the
+plugin's own `codex:rescue`; codex-run only adds the rate-limit preflight, explicit flags
+(model, write access, cwd, effort), the wait loop, report extraction and the advice /
+review / code split. If the plugin changes its companion CLI, these wrappers may need
+updating; they are pinned to the `task` / `status` / `review` subcommands of plugin 1.0.x.
+
 ## Install
 
 Requirements: Claude Code with the `openai-codex` plugin installed and `codex login` done;
