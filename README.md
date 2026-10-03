@@ -68,7 +68,9 @@ Codex. The scripts also work on their own from any shell.
 | path | purpose |
 |---|---|
 | `skills/codex-run/SKILL.md` | when and how Claude should use it: brief rules, model choice, reading results |
-| `scripts/codex_run.sh` | launch → wait → collect, with usage preflight; exit 2 on quota exhaustion |
+| `scripts/codex_run.sh` | launch → wait → collect, with usage preflight; exit 2 on quota exhaustion; `-d` launches and returns at once |
+| `scripts/codex_wait.sh` | with `codex_run.sh -d`: one bounded wait (default 190 s) per call, exit 4 while the job still runs, then collect the report like `codex_run.sh` |
+| `scripts/_common.sh` | helpers shared by `codex_run.sh` and `codex_wait.sh` (companion lookup, status parsing, report collection) |
 | `scripts/codex_usage.sh` | 5h / 7d rate limits via `codex app-server` JSON-RPC |
 | `scripts/codex_review.sh` | the plugin's built-in diff reviewer (`review` / `adversarial-review`), same launch → wait → collect |
 | `scripts/codex_advise.sh` | ask Codex a question read-only ("advisor" for the orchestrating model): question + context files → Recommendation / Why / What to check / Risks; defaults to the strongest model (`sol`) |
@@ -77,6 +79,16 @@ Codex. The scripts also work on their own from any shell.
 | `agents/codex-advise.md` | same, for `codex_advise.sh` questions |
 | `references/brief-templates.md` | review / revise / implement brief skeletons with the constraint block |
 | `references/companion-notes.md` | runtime quirks: state keyed by cwd, log format, sandbox limits |
+
+## Long jobs without background processes
+
+Claude Code's Bash tool stops at 10 minutes, but Codex jobs can run longer. Launch with
+`codex_run.sh -d ...` (prints the `job:` line and returns), then call
+`codex_wait.sh <jobId> -c <cwd> [-o OUT.md]` in the foreground until it stops exiting 4. Each
+call blocks about 190 s and starts nothing that outlives it. This replaces
+`run_in_background` / `&` / `until ... sleep` / `tail -f` workarounds, whose leftover
+processes kept the calling agent's task open after the job was done. The bundled agents use
+exactly this recipe. Run `tests/run.sh` for an offline check (fake companion, no quota used).
 
 ## Why the constraint block matters
 

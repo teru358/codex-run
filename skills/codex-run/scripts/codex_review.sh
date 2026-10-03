@@ -5,20 +5,22 @@
 # Wrap the plugin's built-in diff reviewer: launch, wait, collect. Use codex_run.sh with a
 # review brief when the reviewer must read a spec or earlier verdicts.
 #
-# usage: codex_review.sh [-a] [-B BASE] [-s auto|working-tree|branch] [-c CWD] [-o OUT.md] [-t SECONDS] [focus text...]
+# usage: codex_review.sh [-a] [-B BASE] [-s auto|working-tree|branch] [-c CWD] [-o OUT.md] [-t SECONDS] [-d] [focus text...]
 #   -a  adversarial-review (accepts free focus text as the remaining args)
 #   -B  base ref for branch scope (e.g. main)
 #   -s  scope (default auto)
 #   -c  working directory (job state is keyed by it)
 #   -o  save the report
+#   -d  detach: launch, print the `usage:` and `job:` lines (plus `out: <path>` if -o given) and
+#       exit 0 without waiting; collect with `codex_wait.sh <jobId> -c CWD [-o OUT.md]`
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-kind=review; base=""; scope=auto; cwd="$PWD"; out=""; timeout_s=2400
+kind=review; base=""; scope=auto; cwd="$PWD"; out=""; timeout_s=2400; detach=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -a) kind=adversarial-review; shift;; -B) base=$2; shift 2;; -s) scope=$2; shift 2;;
-    -c) cwd=$2; shift 2;; -o) out=$2; shift 2;; -t) timeout_s=$2; shift 2;;
-    -h|--help) sed -n '2,14p' "$0"; exit 0;;
+    -c) cwd=$2; shift 2;; -o) out=$2; shift 2;; -t) timeout_s=$2; shift 2;; -d) detach=1; shift;;
+    -h|--help) sed -n '2,16p' "$0"; exit 0;;
     *) break;;
   esac
 done
@@ -37,6 +39,7 @@ try: print(json.load(sys.stdin)["jobId"])
 except Exception: print("")')
 [ -n "$job" ] || { echo "launch failed: $launch" >&2; exit 1; }
 echo "job: $job ($kind, scope $scope${base:+, base $base}, cwd $cwd)"
+if [ "$detach" = 1 ]; then [ -n "$out" ] && echo "out: $out"; exit 0; fi
 deadline=$(( $(date +%s) + timeout_s )); status=queued; log=""
 while :; do
   left=$(( deadline - $(date +%s) )); [ $left -le 0 ] && { echo "timeout; job $job still $status" >&2; exit 3; }

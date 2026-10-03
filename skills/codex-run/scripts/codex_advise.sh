@@ -4,7 +4,7 @@
 # codex_run.sh read-only and prints the answer.
 #
 # usage: codex_advise.sh (-q "question text" | -f QUESTION.md) [-C FILE]... [-m terra|sol|luna|spark]
-#                        [-c CWD] [-o OUT.md] [-e low|medium|high] [-t SECONDS] [--no-usage-check]
+#                        [-c CWD] [-o OUT.md] [-e low|medium|high] [-t SECONDS] [-d] [--no-usage-check]
 #   -q  the question (short text). Use -f for a longer one.
 #   -f  file holding the question (Markdown).
 #   -C  context file to append verbatim (repeatable): a diff, a spec excerpt, a plan, earlier
@@ -14,18 +14,20 @@
 #   -c  working directory the sandbox may read (default: current dir).
 #   -o  save the answer to this file as well as printing it.
 #   -e  reasoning effort (default: medium).  -t  overall timeout seconds (default: 1200).
+#   -d  detach: launch and exit 0 after the `usage:` / `job:` (/ `out:`) lines; collect with
+#       `codex_wait.sh <jobId> -c CWD [-o OUT.md]`. The question is already handed to Codex at launch.
 # The answer is always read-only: Codex is told not to edit files, spawn agents, or ask for
 # confirmation, and to answer with a recommendation + reasons + what it would check first.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-q=""; qfile=""; ctx=(); model="sol"; cwd="$PWD"; out=""; effort="medium"; timeout_s=1200; extra=()
+q=""; qfile=""; ctx=(); model="sol"; cwd="$PWD"; out=""; effort="medium"; timeout_s=1200; extra=(); detach=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -q) q=$2; shift 2;; -f) qfile=$2; shift 2;; -C) ctx+=("$2"); shift 2;;
     -m) model=$2; shift 2;; -c) cwd=$2; shift 2;; -o) out=$2; shift 2;;
-    -e) effort=$2; shift 2;; -t) timeout_s=$2; shift 2;;
+    -e) effort=$2; shift 2;; -t) timeout_s=$2; shift 2;; -d) extra+=("-d"); detach=1; shift;;
     --no-usage-check) extra+=("--no-usage-check"); shift;;
-    -h|--help) sed -n '2,20p' "$0"; exit 0;;
+    -h|--help) sed -n '2,22p' "$0"; exit 0;;
     *) echo "unknown arg: $1" >&2; exit 1;;
   esac
 done
@@ -65,5 +67,5 @@ args=(-b "$brief" -m "$model" -c "$cwd" -e "$effort" -t "$timeout_s" "${extra[@]
 [ -n "$out" ] && args+=(-o "$out")
 "$here/codex_run.sh" "${args[@]}"
 rc=$?
-rm -rf "$tmpd"
+[ "$detach" = 1 ] || rm -rf "$tmpd"   # detached: the job may read the brief after we exit
 exit $rc

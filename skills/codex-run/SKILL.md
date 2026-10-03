@@ -1,6 +1,6 @@
 ---
 name: codex-run
-description: Run OpenAI Codex as a cost-free (for Claude quota) reviewer, design drafter, or implementer through the openai-codex Claude Code plugin — in one foreground command that launches, waits, and returns the final report, with a rate-limit preflight. Use this whenever you want to delegate a design review, a spec/plan revision, an implementation task, or a second-opinion diagnosis to Codex; whenever the user mentions codex, "codex に投げて", "second opinion", "レビューを codex で", or asks how much Codex quota is left. Prefer this over the plugin's built-in `codex:rescue` subagent when you need to control the model, write access, working directory, or need the report back reliably.
+description: Run OpenAI Codex as a cost-free (for Claude quota) reviewer, design drafter, or implementer through the openai-codex Claude Code plugin — in one foreground command (or a detach + wait pair for long jobs) that launches, waits, and returns the final report, with a rate-limit preflight. Use this whenever you want to delegate a design review, a spec/plan revision, an implementation task, or a second-opinion diagnosis to Codex; whenever the user mentions codex, "codex に投げて", "second opinion", "レビューを codex で", or asks how much Codex quota is left. Prefer this over the plugin's built-in `codex:rescue` subagent when you need to control the model, write access, working directory, or need the report back reliably.
 ---
 
 # codex-run
@@ -28,11 +28,26 @@ $S/codex_advise.sh -q "Should resume require a succeeded probe in the same tick?
 `codex_run.sh` prints the rate limit, the job id, then `status | subagent spawns in log: N`,
 then the report (or saves it with `-o`). Exit codes: 0 done, 2 quota exhausted / preflight
 refused, 3 timeout, 1 other. A 190-second `status --wait` loop is inside, so the script keeps going up to `-t` seconds.
-If your tool has its own hard timeout (Claude Code's Bash stops at 10 minutes), either run
-the script in the background and read `-o` when the task notification arrives, or accept
-that the wrapper may be killed while the Codex job keeps running: the job id was printed on
-the `job:` line, and `codex-companion.mjs status <id> --cwd <dir> --wait --json` recovers it
-(the log's last `Final output` block is the report).
+
+### Long jobs: detach, then wait in bounded steps
+
+Claude Code's Bash tool stops at 10 minutes, so for anything that may run longer use two
+foreground calls instead of one long one:
+
+```bash
+$S/codex_run.sh -d -b brief.md -m sol -c tmp/wt/x -o out/review.md   # launch only: usage:/job:/out: lines, exit 0
+$S/codex_wait.sh task-xxxx -c tmp/wt/x -o out/review.md              # one wait (default 190 s, max 540 via -t)
+```
+
+`codex_wait.sh` calls `status --wait` exactly once. Exit 4 means "still running, call it again";
+once the job ends it collects the report exactly as `codex_run.sh` does (same `status:` line,
+`-o` handling and exit codes 0 / 2 / 1). `codex_review.sh` and `codex_advise.sh` accept `-d` too.
+
+Never solve the 10-minute limit with `run_in_background`, `&`, an `until ... sleep` loop or
+`tail -f`: a leftover background process keeps the caller's task open after the work is
+done, and a polling loop re-implements what `codex_wait.sh` already does. Detach + wait leaves
+no process behind, and the job id on the `job:` line is enough to resume from any later call
+(`codex_wait.sh <id> -c <dir>`).
 
 `codex_review.sh` wraps the plugin's built-in diff reviewer (no brief needed: `-B main` for a
 branch, `-a "focus text"` for an adversarial pass). It is the quick option for "look at this
@@ -51,7 +66,8 @@ large files: Codex reads the directory given with `-c` itself.
 
 To keep the launch and polling out of the main conversation, three agent definitions are
 provided under `agents/`; spawn one with the exact script command line and it returns only
-the report, appearing as its own task line like the plugin's `codex:rescue`. They are split
+the report, appearing as its own task line like the plugin's `codex:rescue`. They follow the
+detach + wait recipe above, entirely in the foreground. They are split
 by job kind so the task list shows what Codex is doing:
 
 | agent | runs | task line means |
@@ -60,8 +76,8 @@ by job kind so the task list shows what Codex is doing:
 | `codex-review` | `codex_run.sh` (no `-w`) or `codex_review.sh` | Codex is reviewing, read-only |
 | `codex-advise` | `codex_advise.sh ...` | Codex is answering a question for the orchestrator |
 
-Each costs one small (haiku) subagent turn; a plain foreground or background Bash call of
-the script costs nothing extra.
+Each costs one small (haiku) subagent turn; a plain foreground Bash call of the script (or
+`-d` + `codex_wait.sh`) costs nothing extra.
 
 ## Writing the brief
 

@@ -4,7 +4,7 @@
 # collect the final report — in one foreground command so the calling agent needs no polling loop.
 #
 # usage: codex_run.sh -b BRIEF.md [-m terra|sol|luna|spark|<full-model-id>] [-w] [-c CWD] [-o OUT.md]
-#                     [-e low|medium|high] [-r] [-t SECONDS] [--no-usage-check]
+#                     [-e low|medium|high] [-r] [-t SECONDS] [-d] [--no-usage-check]
 #   -b  brief (prompt) file. Passed via --prompt-file, so it may be long.
 #   -m  model alias (default: terra). Aliases map to gpt-5.6-* ids; unknown values are passed through.
 #   -w  write-capable run (--write). Omit for read-only (review / report-into-/tmp jobs).
@@ -14,19 +14,25 @@
 #   -e  reasoning effort (default: medium).
 #   -r  resume the last thread in CWD (--resume-last) instead of --fresh.
 #   -t  overall timeout in seconds (default: 3600).
+#   -d  detach: preflight + launch, print the `usage:` and `job:` lines (plus `out: <path>` if -o
+#       was given), and exit 0 at once without waiting. Collect later with
+#       `codex_wait.sh <jobId> -c CWD [-o OUT.md]` (one bounded foreground wait per call), so the
+#       caller never needs a background process or a polling loop of its own.
 #   --no-usage-check  skip the rate-limit preflight.
 # exit codes: 0 completed / 2 usage limit hit or preflight refused / 3 timeout / 1 other failure
 # env: CODEX_COMPANION (path to codex-companion.mjs; auto-detected under ~/.claude/plugins/cache/openai-codex)
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-brief=""; model="terra"; write=""; cwd="$PWD"; out=""; effort="medium"; resume="--fresh"; timeout_s=3600; usage_check=1
+. "$here/_common.sh"
+brief=""; model="terra"; write=""; cwd="$PWD"; out=""; effort="medium"; resume="--fresh"; timeout_s=3600; usage_check=1; detach=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -b) brief=$2; shift 2;; -m) model=$2; shift 2;; -w) write="--write"; shift;;
     -c) cwd=$2; shift 2;; -o) out=$2; shift 2;; -e) effort=$2; shift 2;;
     -r) resume="--resume-last"; shift;; -t) timeout_s=$2; shift 2;;
+    -d) detach=1; shift;;
     --no-usage-check) usage_check=0; shift;;
-    -h|--help) sed -n '2,22p' "$0"; exit 0;;
+    -h|--help) sed -n '2,26p' "$0"; exit 0;;
     *) echo "unknown arg: $1" >&2; exit 1;;
   esac
 done
@@ -35,7 +41,7 @@ brief=$(cd "$(dirname "$brief")" && pwd)/$(basename "$brief")
 case "$model" in
   terra) model=gpt-5.6-terra;; sol) model=gpt-5.6-sol;; luna) model=gpt-5.6-luna;; spark) model=gpt-5.3-codex-spark;;
 esac
-companion=${CODEX_COMPANION:-$(ls -1 "$HOME"/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null | sort -V | tail -1)}
+companion=$(codex_find_companion)
 [ -f "$companion" ] || { echo "codex-companion.mjs not found (install the openai-codex plugin or set CODEX_COMPANION)" >&2; exit 1; }
 
 if [ "$usage_check" = 1 ]; then
@@ -46,38 +52,24 @@ if [ "$usage_check" = 1 ]; then
   fi
 fi
 
-launch=$(node "$companion" task --background $resume $write --json --cwd "$cwd" --model "$model" --effort "$effort" --prompt-file "$brief" 2>&1)
-job=$(printf '%s' "$launch" | python3 -c 'import sys,json
-try: print(json.load(sys.stdin)["jobId"])
-except Exception: print("")')
+launch=$(codex_companion "$companion" task --background $resume $write --json --cwd "$cwd" --model "$model" --effort "$effort" --prompt-file "$brief" 2>&1)
+job=$(codex_job_id "$launch")
 [ -n "$job" ] || { echo "launch failed: $launch" >&2; exit 1; }
 echo "job: $job (model $model, $( [ -n "$write" ] && echo write || echo read-only ), cwd $cwd)"
+if [ "$detach" = 1 ]; then
+  [ -n "$out" ] && echo "out: $out"
+  exit 0
+fi
 
 deadline=$(( $(date +%s) + timeout_s )); status=queued
 while :; do
   left=$(( deadline - $(date +%s) )); [ $left -le 0 ] && { echo "timeout after ${timeout_s}s; job $job still $status" >&2; exit 3; }
   w=$(( left < 190 ? left : 190 ))
-  st=$(node "$companion" status "$job" --cwd "$cwd" --wait --timeout-ms $((w*1000)) --json 2>/dev/null)
-  status=$(printf '%s' "$st" | python3 -c 'import sys,json
-try: j=json.load(sys.stdin)["job"]; print(j.get("status",""), j.get("logFile",""))
-except Exception: print("")')
+  st=$(codex_companion "$companion" status "$job" --cwd "$cwd" --wait --timeout-ms $((w*1000)) --json 2>/dev/null)
+  status=$(printf '%s' "$st" | codex_parse_status)
   log=${status#* }; status=${status%% *}
   case "$status" in completed|failed|cancelled) break;; esac
 done
 
-report=""
-if [ -n "$log" ] && [ -f "$log" ]; then
-  n=$(grep -n "Final output" "$log" | tail -1 | cut -d: -f1)
-  [ -n "$n" ] && report=$(tail -n +$((n+1)) "$log")
-  spawns=$(grep -c "spawn_agent" "$log"); err=$(grep "Codex error" "$log" | tail -1 | cut -c1-200)
-else
-  spawns="?"; err=""
-fi
-hdr="status: $status | subagent spawns in log: $spawns${err:+ | $err}"
-echo "$hdr"
-[ -n "$out" ] && { mkdir -p "$(dirname "$out")"; printf '%s\n' "$report" > "$out"; echo "report saved: $out ($(wc -l < "$out") lines)"; }
-[ -z "$out" ] && printf '%s\n' "$report"
-case "$status" in
-  completed) exit 0;;
-  *) printf '%s' "$err" | grep -q "usage limit" && exit 2; exit 1;;
-esac
+codex_collect "$status" "$log" "$out"
+exit $?
