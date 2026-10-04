@@ -23,7 +23,9 @@ cat > "$tmp/fake-companion" <<EOF2
 #!/bin/bash
 cnt="$tmp/count"
 case "\$1" in
-  task) echo '{"jobId":"task-fake"}';;
+  task)
+    while [ \$# -gt 0 ]; do [ "\$1" = --prompt-file ] && cp "\$2" "$tmp/prompt.seen"; shift; done
+    echo '{"jobId":"task-fake"}';;
   status)
     n=\$(cat "\$cnt" 2>/dev/null || echo 0); n=\$((n+1)); echo \$n > "\$cnt"
     if [ \$n -lt 2 ]; then echo '{"job":{"status":"running"}}'
@@ -67,5 +69,22 @@ check "failed + usage limit exits 2" $([ $rc = 2 ]; echo $?)
 rm -f "$tmp/count"; sed -i 's/"failed"/"completed"/' "$tmp/fake-companion"
 "$S/codex_run.sh" -b "$tmp/brief.md" -c "$tmp" --no-usage-check 2>&1 | grep -q 'Hello report line 1'
 check "foreground run still collects" $([ "${PIPESTATUS[1]}" = 0 ]; echo $?)
+
+# 7. guard: default prepends the constraints block before the original brief
+printf 'line A\nline B\n' > "$tmp/brief2.md"
+rm -f "$tmp/prompt.seen"
+"$S/codex_run.sh" -b "$tmp/brief2.md" -c "$tmp" --no-usage-check >/dev/null 2>&1
+check "guard: starts with Runner constraints" $(head -1 "$tmp/prompt.seen" | grep -q '^# Runner constraints'; echo $?)
+check "guard: forbids subagents" $(grep -q 'Do NOT spawn subagents' "$tmp/prompt.seen"; echo $?)
+check "guard: original brief follows" $(tail -2 "$tmp/prompt.seen" | cmp -s - "$tmp/brief2.md"; echo $?)
+check "guard: brief file untouched" $([ "$(cat "$tmp/brief2.md")" = "$(printf 'line A\nline B')" ]; echo $?)
+check "guard: foreground temp file removed" $([ -z "$(ls "$tmp"/codex-run.* 2>/dev/null)" ]; echo $?)
+# 8. --no-guard passes the brief unchanged
+rm -f "$tmp/prompt.seen"
+"$S/codex_run.sh" --no-guard -b "$tmp/brief2.md" -c "$tmp" --no-usage-check >/dev/null 2>&1
+check "no-guard: prompt identical to brief" $(cmp -s "$tmp/prompt.seen" "$tmp/brief2.md"; echo $?)
+# 9. detach keeps the guarded temp file
+TMPDIR=$tmp "$S/codex_run.sh" -d -b "$tmp/brief2.md" -c "$tmp" --no-usage-check >/dev/null 2>&1
+check "guard: detach keeps temp file" $([ -n "$(ls "$tmp"/codex-run.* 2>/dev/null)" ]; echo $?)
 
 [ $fail = 0 ] && echo "ALL PASSED" || { echo "FAILURES"; exit 1; }

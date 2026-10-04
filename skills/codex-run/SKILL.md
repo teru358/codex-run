@@ -29,6 +29,12 @@ $S/codex_advise.sh -q "Should resume require a succeeded probe in the same tick?
 then the report (or saves it with `-o`). Exit codes: 0 done, 2 quota exhausted / preflight
 refused, 3 timeout, 1 other. A 190-second `status --wait` loop is inside, so the script keeps going up to `-t` seconds.
 
+### Runner constraints
+
+By default `codex_run.sh` prepends a short constraints block (single thread, no subagents, no
+lingering background processes, no confirmation step) to the brief via a temp copy. Pass
+`--no-guard` to send the brief unchanged. `codex_review.sh -a` puts it before the focus text.
+
 ### Long jobs: detach, then wait in bounded steps
 
 Claude Code's Bash tool stops at 10 minutes, so for anything that may run longer use two

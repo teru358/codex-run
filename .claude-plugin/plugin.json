@@ -1,6 +1,6 @@
 {
   "name": "codex-run",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Delegate reviews, revisions and implementation to OpenAI Codex from Claude Code in one command: rate-limit preflight, launch, wait, collect the report.",
   "author": { "name": "teru358" },
   "repository": "https://github.com/teru358/codex-run",

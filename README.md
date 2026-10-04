@@ -80,6 +80,12 @@ Codex. The scripts also work on their own from any shell.
 | `references/brief-templates.md` | review / revise / implement brief skeletons with the constraint block |
 | `references/companion-notes.md` | runtime quirks: state keyed by cwd, log format, sandbox limits |
 
+## Runner constraints
+
+`codex_run.sh` (and `codex_advise.sh`, and `codex_review.sh -a`) put a fixed block in front of the
+prompt: single thread, no subagents, no lingering background processes, no confirmation step.
+The brief file itself is not modified (a temp copy is sent). Pass `--no-guard` to skip it.
+
 ## Long jobs without background processes
 
 Claude Code's Bash tool stops at 10 minutes, but Codex jobs can run longer. Launch with

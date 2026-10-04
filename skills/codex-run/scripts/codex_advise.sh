@@ -20,6 +20,7 @@
 # confirmation, and to answer with a recommendation + reasons + what it would check first.
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
+. "$here/_common.sh"
 q=""; qfile=""; ctx=(); model="sol"; cwd="$PWD"; out=""; effort="medium"; timeout_s=1200; extra=(); detach=0
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -36,13 +37,13 @@ if [ -n "$qfile" ]; then [ -f "$qfile" ] || { echo "question file not found: $qf
 tmpd=$(mktemp -d "${TMPDIR:-/tmp}/codex-advise.XXXXXX")
 brief="$tmpd/brief.md"
 {
+  codex_guard_header
   cat <<'HDR'
+
 # Advice request (read-only)
 
 Constraints — follow every line:
-- Single thread. Do NOT spawn subagents (`spawn_agent` is forbidden).
 - Read-only. Do not edit, create, or delete any file. Do not run commands that change state.
-- No confirmation step. Do not ask whether to proceed; answer and finish.
 - You may read the repository under the working directory to ground your answer. Cite paths
   and line numbers you actually opened.
 - Answer format, in this order, in the language of the question:
@@ -63,7 +64,7 @@ HDR
     printf '\n## Context: %s\n\n```\n' "$(basename "$f")"; cat "$f"; printf '\n```\n'
   done
 } > "$brief"
-args=(-b "$brief" -m "$model" -c "$cwd" -e "$effort" -t "$timeout_s" "${extra[@]}")
+args=(--no-guard -b "$brief" -m "$model" -c "$cwd" -e "$effort" -t "$timeout_s" "${extra[@]}")
 [ -n "$out" ] && args+=(-o "$out")
 "$here/codex_run.sh" "${args[@]}"
 rc=$?

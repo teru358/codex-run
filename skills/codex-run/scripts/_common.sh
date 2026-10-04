@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Shared helpers for codex_run.sh / codex_wait.sh. Source this file; do not execute it.
+# Shared helpers for codex_run.sh / codex_review.sh / codex_advise.sh / codex_wait.sh. Source this file; do not execute it.
 
 # Print the path of codex-companion.mjs (CODEX_COMPANION, else newest installed plugin copy).
 codex_find_companion() {
@@ -46,4 +46,15 @@ codex_collect() {
     completed) return 0;;
     *) printf '%s' "$err" | grep -q "usage limit" && return 2; return 1;;
   esac
+}
+
+# Print the fixed runner-constraints block that codex_run.sh / codex_review.sh put in front of the
+# prompt, and codex_advise.sh at the top of its own header (no trailing blank line).
+codex_guard_header() {
+  cat <<'GUARD'
+# Runner constraints (added by codex-run; they override anything below that conflicts)
+- Single thread. Do NOT spawn subagents or parallel agents (`spawn_agent` and similar tools are forbidden). Do all reading, analysis and writing yourself, in this one session.
+- Do not start background processes that outlive your turn.
+- No confirmation step: do not ask whether to proceed; do the task and finish with the final report.
+GUARD
 }

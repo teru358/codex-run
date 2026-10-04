@@ -5,26 +5,34 @@
 # Wrap the plugin's built-in diff reviewer: launch, wait, collect. Use codex_run.sh with a
 # review brief when the reviewer must read a spec or earlier verdicts.
 #
-# usage: codex_review.sh [-a] [-B BASE] [-s auto|working-tree|branch] [-c CWD] [-o OUT.md] [-t SECONDS] [-d] [focus text...]
+# usage: codex_review.sh [-a] [-B BASE] [-s auto|working-tree|branch] [-c CWD] [-o OUT.md] [-t SECONDS] [-d] [--no-guard] [focus text...]
 #   -a  adversarial-review (accepts free focus text as the remaining args)
 #   -B  base ref for branch scope (e.g. main)
 #   -s  scope (default auto)
 #   -c  working directory (job state is keyed by it)
 #   -o  save the report
+#   --no-guard  do not prepend the runner-constraints block. For adversarial-review the block is
+#       put in front of the focus text; the built-in `review` takes no prompt text at all, so it
+#       cannot carry the block.
 #   -d  detach: launch, print the `usage:` and `job:` lines (plus `out: <path>` if -o given) and
 #       exit 0 without waiting; collect with `codex_wait.sh <jobId> -c CWD [-o OUT.md]`
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
-kind=review; base=""; scope=auto; cwd="$PWD"; out=""; timeout_s=2400; detach=0
+. "$here/_common.sh"
+kind=review; base=""; scope=auto; cwd="$PWD"; out=""; timeout_s=2400; detach=0; guard=1
 while [ $# -gt 0 ]; do
   case "$1" in
     -a) kind=adversarial-review; shift;; -B) base=$2; shift 2;; -s) scope=$2; shift 2;;
     -c) cwd=$2; shift 2;; -o) out=$2; shift 2;; -t) timeout_s=$2; shift 2;; -d) detach=1; shift;;
-    -h|--help) sed -n '2,16p' "$0"; exit 0;;
+    --no-guard) guard=0; shift;;
+    -h|--help) sed -n '2,19p' "$0"; exit 0;;
     *) break;;
   esac
 done
 focus="$*"
+if [ "$guard" = 1 ] && [ "$kind" = adversarial-review ]; then
+  focus="$(codex_guard_header)"$'\n\n'"$focus"
+fi
 companion=${CODEX_COMPANION:-$(ls -1 "$HOME"/.claude/plugins/cache/openai-codex/codex/*/scripts/codex-companion.mjs 2>/dev/null | sort -V | tail -1)}
 [ -f "$companion" ] || { echo "codex-companion.mjs not found" >&2; exit 1; }
 echo "usage: $("$here/codex_usage.sh" 2>/dev/null)"

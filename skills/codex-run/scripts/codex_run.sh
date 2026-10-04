@@ -4,7 +4,7 @@
 # collect the final report — in one foreground command so the calling agent needs no polling loop.
 #
 # usage: codex_run.sh -b BRIEF.md [-m terra|sol|luna|spark|<full-model-id>] [-w] [-c CWD] [-o OUT.md]
-#                     [-e low|medium|high] [-r] [-t SECONDS] [-d] [--no-usage-check]
+#                     [-e low|medium|high] [-r] [-t SECONDS] [-d] [--no-guard] [--no-usage-check]
 #   -b  brief (prompt) file. Passed via --prompt-file, so it may be long.
 #   -m  model alias (default: terra). Aliases map to gpt-5.6-* ids; unknown values are passed through.
 #   -w  write-capable run (--write). Omit for read-only (review / report-into-/tmp jobs).
@@ -18,21 +18,25 @@
 #       was given), and exit 0 at once without waiting. Collect later with
 #       `codex_wait.sh <jobId> -c CWD [-o OUT.md]` (one bounded foreground wait per call), so the
 #       caller never needs a background process or a polling loop of its own.
+#   --no-guard  do not prepend the runner-constraints block (single thread, no subagents, no
+#       background processes, no confirmation step). By default it is put in front of the brief
+#       in a temp copy; the original brief file is never modified.
 #   --no-usage-check  skip the rate-limit preflight.
 # exit codes: 0 completed / 2 usage limit hit or preflight refused / 3 timeout / 1 other failure
 # env: CODEX_COMPANION (path to codex-companion.mjs; auto-detected under ~/.claude/plugins/cache/openai-codex)
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 . "$here/_common.sh"
-brief=""; model="terra"; write=""; cwd="$PWD"; out=""; effort="medium"; resume="--fresh"; timeout_s=3600; usage_check=1; detach=0
+brief=""; model="terra"; write=""; cwd="$PWD"; out=""; effort="medium"; resume="--fresh"; timeout_s=3600; usage_check=1; detach=0; guard=1
 while [ $# -gt 0 ]; do
   case "$1" in
     -b) brief=$2; shift 2;; -m) model=$2; shift 2;; -w) write="--write"; shift;;
     -c) cwd=$2; shift 2;; -o) out=$2; shift 2;; -e) effort=$2; shift 2;;
     -r) resume="--resume-last"; shift;; -t) timeout_s=$2; shift 2;;
     -d) detach=1; shift;;
+    --no-guard) guard=0; shift;;
     --no-usage-check) usage_check=0; shift;;
-    -h|--help) sed -n '2,26p' "$0"; exit 0;;
+    -h|--help) sed -n '2,29p' "$0"; exit 0;;
     *) echo "unknown arg: $1" >&2; exit 1;;
   esac
 done
@@ -52,7 +56,15 @@ if [ "$usage_check" = 1 ]; then
   fi
 fi
 
-launch=$(codex_companion "$companion" task --background $resume $write --json --cwd "$cwd" --model "$model" --effort "$effort" --prompt-file "$brief" 2>&1)
+prompt_file=$brief
+if [ "$guard" = 1 ]; then
+  prompt_file=$(mktemp "${TMPDIR:-/tmp}/codex-run.XXXXXX") || { echo "mktemp failed" >&2; exit 1; }
+  { codex_guard_header; printf '\n'; cat "$brief"; } > "$prompt_file"
+  # Foreground: remove on exit. Detached: the companion may read the file after we exit, so keep it.
+  [ "$detach" = 1 ] || trap 'rm -f "$prompt_file"' EXIT
+fi
+
+launch=$(codex_companion "$companion" task --background $resume $write --json --cwd "$cwd" --model "$model" --effort "$effort" --prompt-file "$prompt_file" 2>&1)
 job=$(codex_job_id "$launch")
 [ -n "$job" ] || { echo "launch failed: $launch" >&2; exit 1; }
 echo "job: $job (model $model, $( [ -n "$write" ] && echo write || echo read-only ), cwd $cwd)"
