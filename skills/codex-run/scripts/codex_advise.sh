@@ -66,7 +66,12 @@ HDR
 } > "$brief"
 args=(--no-guard -b "$brief" -m "$model" -c "$cwd" -e "$effort" -t "$timeout_s" "${extra[@]}")
 [ -n "$out" ] && args+=(-o "$out")
-"$here/codex_run.sh" "${args[@]}"
+CODEX_RUN_DEFER_BROKER_RELEASE=1 "$here/codex_run.sh" "${args[@]}"
 rc=$?
-[ "$detach" = 1 ] || rm -rf "$tmpd"   # detached: the job may read the brief after we exit
+if [ "$detach" = 1 ]; then
+  : # detached: the job may read the brief after we exit
+else
+  codex_release_broker "$cwd"
+  rm -rf "$tmpd"
+fi
 exit $rc

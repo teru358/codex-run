@@ -8,6 +8,9 @@
 - Job state lives under `~/.claude/plugins/data/codex-openai-codex/state/<dirname>-<hash>/jobs/`
   and is keyed by the launch directory. Query `status` with the same `--cwd` or you get
   "No job found".
+- On foreground completion codex-run uses the companion's broker lifecycle API to close the
+  cwd-scoped broker and prints a `broker:` line. `--keep-broker` / `CODEX_RUN_KEEP_BROKER=1`
+  retains it, while queued or running jobs in that cwd retain it automatically.
 - The final report is everything after the last `Final output` line in the job log. Progress
   lines such as `Command completed: ...` also contain the word "completed" — never grep the
   log for completion; use the JSON status.

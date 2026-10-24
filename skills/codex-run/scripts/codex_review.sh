@@ -61,4 +61,6 @@ done
 report=""; [ -n "$log" ] && [ -f "$log" ] && { n=$(grep -n "Final output" "$log" | tail -1 | cut -d: -f1); [ -n "$n" ] && report=$(tail -n +$((n+1)) "$log"); }
 echo "status: $status"
 [ -n "$out" ] && { mkdir -p "$(dirname "$out")"; printf '%s\n' "$report" > "$out"; echo "report saved: $out"; } || printf '%s\n' "$report"
-[ "$status" = completed ]
+rc=1; [ "$status" = completed ] && rc=0
+codex_release_broker "$cwd"
+exit $rc

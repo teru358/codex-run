@@ -49,6 +49,13 @@ $S/codex_wait.sh task-xxxx -c tmp/wt/x -o out/review.md              # one wait 
 once the job ends it collects the report exactly as `codex_run.sh` does (same `status:` line,
 `-o` handling and exit codes 0 / 2 / 1). `codex_review.sh` and `codex_advise.sh` accept `-d` too.
 
+### Broker cleanup
+
+After a foreground job finishes, the scripts print a `broker:` line and release the companion's
+cwd-scoped app-server broker. Pass `--keep-broker` to `codex_run.sh` or `codex_wait.sh`, or set
+`CODEX_RUN_KEEP_BROKER=1`, to retain it; a broker stays up automatically while queued or running
+jobs remain in that same cwd.
+
 Never solve the 10-minute limit with `run_in_background`, `&`, an `until ... sleep` loop or
 `tail -f`: a leftover background process keeps the caller's task open after the work is
 done, and a polling loop re-implements what `codex_wait.sh` already does. Detach + wait leaves

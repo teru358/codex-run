@@ -15,6 +15,7 @@ usage: 5h: 0% used (reset 09/22 18:48 JST) | 7d: 61% used (reset 09/26 19:29 JST
 job: task-muc725cy-ihk62r (model gpt-5.6-sol, read-only, cwd tmp/wt/a21a)
 status: completed | subagent spawns in log: 0
 report saved: out/review.md (40 lines)
+broker: released (pid 12345)
 ```
 
 ## Requirements
@@ -95,6 +96,13 @@ call blocks about 190 s and starts nothing that outlives it. This replaces
 `run_in_background` / `&` / `until ... sleep` / `tail -f` workarounds, whose leftover
 processes kept the calling agent's task open after the job was done. The bundled agents use
 exactly this recipe. Run `tests/run.sh` for an offline check (fake companion, no quota used).
+
+## Broker cleanup
+
+On foreground completion, codex-run releases the companion app-server broker for that cwd and
+prints a `broker:` result line. Use `--keep-broker` with `codex_run.sh` / `codex_wait.sh`, or
+`CODEX_RUN_KEEP_BROKER=1`, to retain it; it is kept automatically when that cwd still has queued
+or running jobs.
 
 ## Why the constraint block matters
 

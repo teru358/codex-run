@@ -4,7 +4,7 @@
 # collect the final report — in one foreground command so the calling agent needs no polling loop.
 #
 # usage: codex_run.sh -b BRIEF.md [-m terra|sol|luna|spark|<full-model-id>] [-w] [-c CWD] [-o OUT.md]
-#                     [-e low|medium|high] [-r] [-t SECONDS] [-d] [--no-guard] [--no-usage-check]
+#                     [-e low|medium|high] [-r] [-t SECONDS] [-d] [--keep-broker] [--no-guard] [--no-usage-check]
 #   -b  brief (prompt) file. Passed via --prompt-file, so it may be long.
 #   -m  model alias (default: terra). Aliases map to gpt-5.6-* ids; unknown values are passed through.
 #   -w  write-capable run (--write). Omit for read-only (review / report-into-/tmp jobs).
@@ -18,6 +18,7 @@
 #       was given), and exit 0 at once without waiting. Collect later with
 #       `codex_wait.sh <jobId> -c CWD [-o OUT.md]` (one bounded foreground wait per call), so the
 #       caller never needs a background process or a polling loop of its own.
+#   --keep-broker  leave the companion app-server broker running after a completed foreground job.
 #   --no-guard  do not prepend the runner-constraints block (single thread, no subagents, no
 #       background processes, no confirmation step). By default it is put in front of the brief
 #       in a temp copy; the original brief file is never modified.
@@ -27,13 +28,14 @@
 set -u
 here=$(cd "$(dirname "$0")" && pwd)
 . "$here/_common.sh"
-brief=""; model="terra"; write=""; cwd="$PWD"; out=""; effort="medium"; resume="--fresh"; timeout_s=3600; usage_check=1; detach=0; guard=1
+brief=""; model="terra"; write=""; cwd="$PWD"; out=""; effort="medium"; resume="--fresh"; timeout_s=3600; usage_check=1; detach=0; guard=1; keep_broker=0
 while [ $# -gt 0 ]; do
   case "$1" in
     -b) brief=$2; shift 2;; -m) model=$2; shift 2;; -w) write="--write"; shift;;
     -c) cwd=$2; shift 2;; -o) out=$2; shift 2;; -e) effort=$2; shift 2;;
     -r) resume="--resume-last"; shift;; -t) timeout_s=$2; shift 2;;
     -d) detach=1; shift;;
+    --keep-broker) keep_broker=1; shift;;
     --no-guard) guard=0; shift;;
     --no-usage-check) usage_check=0; shift;;
     -h|--help) sed -n '2,29p' "$0"; exit 0;;
@@ -84,4 +86,8 @@ while :; do
 done
 
 codex_collect "$status" "$log" "$out"
-exit $?
+rc=$?
+if [ "${CODEX_RUN_DEFER_BROKER_RELEASE:-}" != 1 ]; then
+  if [ "$keep_broker" = 1 ]; then CODEX_RUN_KEEP_BROKER=1 codex_release_broker "$cwd"; else codex_release_broker "$cwd"; fi
+fi
+exit $rc

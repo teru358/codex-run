@@ -27,6 +27,99 @@ try: j=json.load(sys.stdin)["job"]; print(j.get("status",""), j.get("logFile",""
 except Exception: print("")'
 }
 
+# Release the companion's cwd-scoped app-server broker after the last job ends.  A real
+# companion exposes lifecycle/state modules; executable test stubs use the conservative
+# process-list fallback instead.
+codex_release_broker() {
+  local cwd=$1 companion rc normalized pid released=0 out=""
+  if [ "${CODEX_RUN_KEEP_BROKER:-}" = 1 ]; then
+    echo "broker: kept (CODEX_RUN_KEEP_BROKER)"
+    return 0
+  fi
+
+  companion=$(codex_find_companion)
+  if [ -f "$companion" ] && [[ "$companion" = *.mjs ]] && command -v node >/dev/null 2>&1; then
+    local runner=(node)
+    command -v timeout >/dev/null 2>&1 && runner=(timeout 5 node)
+    out=$(CODEX_RUN_BROKER_COMPANION=$companion CODEX_RUN_BROKER_CWD=$cwd "${runner[@]}" --input-type=module -e "$_CODEX_RELEASE_BROKER_JS"); rc=$?
+    [ -n "$out" ] && echo "$out"
+    case "$rc" in
+      0) ;;
+      124) echo "broker: release failed (timed out)" >&2;;
+      *) echo "broker: release failed (node exited $rc)" >&2;;
+    esac
+    # A broker whose session file is gone or whose release was refused is left alone only
+    # while a job still runs; otherwise sweep the process list for this cwd as well.
+    case "$out" in *"broker: kept"*) return 0;; esac
+  fi
+
+  normalized=$cwd
+  while [ "$normalized" != / ] && [ "${normalized%/}" != "$normalized" ]; do normalized=${normalized%/}; done
+  while IFS= read -r pid; do
+    [ -n "$pid" ] || continue
+    if kill -TERM "$pid" 2>/dev/null; then
+      echo "broker: released (pid $pid)"
+      released=1
+    fi
+  done < <(ps -eo pid=,args= | awk -v target="$normalized" '
+    function normalize(value) { while (value != "/" && value ~ /\/$/) sub(/\/$/, "", value); return value }
+    $0 ~ /app-server-broker\.mjs[[:space:]]+serve([[:space:]]|$)/ {
+      for (i = 2; i < NF; i++) {
+        if ($i == "--cwd" && normalize($(i + 1)) == target) { print $1; next }
+      }
+    }
+  ')
+  if [ "$released" = 1 ]; then return 0; fi
+  case "$out" in *"broker: released"*|*"broker: none"*) ;; *) echo "broker: none";; esac
+  return 0
+}
+
+# The lifecycle route: the companion's own modules shut the broker down, then clear its session.
+_CODEX_RELEASE_BROKER_JS='
+import path from "node:path";
+import process from "node:process";
+import { pathToFileURL } from "node:url";
+
+const oneLine = (error) => String(error?.message ?? error).replace(/\s+/g, " ").slice(0, 200);
+let finished = false;
+const deadline = setTimeout(() => {
+  if (!finished) {
+    process.stderr.write("broker: release failed (timed out)\n");
+    process.exit(0);
+  }
+}, 4900);
+deadline.unref();
+
+try {
+  const scriptDir = path.dirname(process.env.CODEX_RUN_BROKER_COMPANION);
+  const lifecycle = await import(pathToFileURL(path.join(scriptDir, "lib", "broker-lifecycle.mjs")).href);
+  const state = await import(pathToFileURL(path.join(scriptDir, "lib", "state.mjs")).href);
+  const cwd = process.env.CODEX_RUN_BROKER_CWD;
+  const session = lifecycle.loadBrokerSession(cwd);
+  if (!session) {
+    console.log("broker: none");
+  } else {
+    const activeJobs = state.listJobs(cwd).filter((job) => job.status === "queued" || job.status === "running");
+    if (activeJobs.length) {
+      console.log(`broker: kept (${activeJobs.length} jobs running)`);
+    } else {
+      await lifecycle.sendBrokerShutdown(session.endpoint);
+      lifecycle.teardownBrokerSession({
+        ...session,
+        killProcess: (pid, signal) => process.kill(pid, signal ?? "SIGTERM")
+      });
+      lifecycle.clearBrokerSession(cwd);
+      console.log(`broker: released (pid ${session.pid})`);
+    }
+  }
+} catch (error) {
+  process.stderr.write(`broker: release failed (${oneLine(error)})\n`);
+} finally {
+  finished = true;
+  clearTimeout(deadline);
+}
+'
+
 # codex_collect STATUS LOG OUT
 # Print the "status:" line, save or print the report (text after the last "Final output"
 # line of LOG), and return the script exit code: 0 completed / 2 usage limit / 1 other.

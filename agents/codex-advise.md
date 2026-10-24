@@ -26,9 +26,9 @@ Forbidden, no exceptions: `run_in_background: true`, a trailing `&`, `nohup`, `u
 sleep` loops, `while` polling loops, `tail -f`, `watch`, and calling `codex-companion.mjs`
 yourself. Only the two scripts above, one foreground call at a time.
 
-Before you report, check that you left nothing behind: `ps --ppid $$ -o pid,args` (and
-`jobs`) must show no process you started. If one exists, stop it by pid (`kill <pid>`; never
-`pkill -f`) and mention it in the report.
+Include the `broker:` line printed by the runner in your report; it records whether the
+cwd-scoped broker was released, retained for another running job, or explicitly kept.
+Use `--keep-broker` (or `CODEX_RUN_KEEP_BROKER=1`) only when the caller asks to retain it.
 
 Then reply with:
 
